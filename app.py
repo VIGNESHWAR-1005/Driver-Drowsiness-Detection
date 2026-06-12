@@ -1,24 +1,3 @@
-"""
-Driver Drouzyness - Eye Lid + Yawn Detection System
-=====================================================
-Python 3.12 | OpenCV 4.13.0.92 | MediaPipe 0.10.35 | NumPy 2.4.6
-
-DETECTS:
-  1. DROWSINESS  — EAR (Eye Aspect Ratio)  < threshold for >= 2s
-  2. YAWNING     — MAR (Mouth Aspect Ratio) > threshold (instant alert)
-
-EAR FORMULA  (eyelid distance):
-  EAR = (|P2-P6| + |P3-P5|) / (2 * |P1-P4|)
-  Open ~ 0.25-0.40   Closed ~ 0.05-0.18
-
-MAR FORMULA  (mouth opening distance):
-  MAR = (|M2-M8| + |M3-M7| + |M4-M6|) / (2 * |M1-M5|)
-  Closed ~ 0.1-0.3   Yawning ~ 0.6-1.0+
-
-RUN:   python app.py
-QUIT:  Press Q or ESC in the camera window
-"""
-
 import cv2
 import numpy as np
 import mediapipe as mp
@@ -54,11 +33,6 @@ WINDOW_TITLE     = "Driver Drouzyness"
 # Eye: 6 points [outer, top-outer, top-inner, inner, bot-inner, bot-outer]
 LEFT_EYE  = [362, 385, 387, 263, 373, 380]
 RIGHT_EYE = [33,  160, 158, 133, 153, 144]
-
-# Mouth: 8 points for MAR
-# Using stable outer lip landmarks from MediaPipe 478-point mesh
-#   M1=left corner   M5=right corner    (horizontal)
-#   M2,M3,M4 = top   M6,M7,M8 = bottom (vertical pairs)
 MOUTH_IDX = [
     61,   # M1 — left corner
     40,   # M2 — top-left outer
@@ -75,8 +49,6 @@ MODEL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                           "face_landmarker.task")
 MODEL_URL  = ("https://storage.googleapis.com/mediapipe-models/"
               "face_landmarker/face_landmarker/float16/1/face_landmarker.task")
-
-# BGR colours
 GREEN    = (0, 200, 150)
 RED      = (0,  50, 255)
 AMBER    = (0, 170, 255)
@@ -161,22 +133,16 @@ def compute_mar(landmarks, fw, fh):
 
     mar = (vert1 + vert2 + vert3) / (2.0 * horiz)
     return mar, pts
-
-
 # =============================================================
 #  ALARM — background thread (non-blocking)
 # =============================================================
 _alarm_running = False
 _alarm_thread  = None
-
-
 def _alarm_loop():
     global _alarm_running
     while _alarm_running:
         _beep()
         time.sleep(0.85)
-
-
 def _beep():
     try:
         if sys.platform.startswith("win"):
@@ -223,7 +189,6 @@ def draw_ear_tag(frame, pts, ear, side):
     col = RED if ear < EAR_THRESHOLD else GREEN
     cv2.putText(frame, f"{side}:{ear:.3f}", (cx - 30, cy),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.38, col, 1, cv2.LINE_AA)
-
 
 def draw_mar_tag(frame, pts, mar):
     cx = sum(p[0] for p in pts) // len(pts)
@@ -373,9 +338,6 @@ def main():
 
     cv2.namedWindow(WINDOW_TITLE, cv2.WINDOW_NORMAL)
     cv2.resizeWindow(WINDOW_TITLE, 960, 620)
-
-    # ── 4. State variables ─────────────────────────────────
-    # Eye-close state
     closed_start    = None     # time.time() when eyes first closed
     eye_alerting    = False    # currently in eye-close alarm
 
@@ -384,7 +346,6 @@ def main():
     yawn_alerting   = False    # currently in yawn alarm
     yawn_cooldown   = 0.0      # time.time() — ignore yawns until after this
 
-    # General
     total_alerts    = 0
     fps_buf         = []
     frame_ts_ms     = 0        # synthetic timestamp for MediaPipe VIDEO mode
@@ -461,13 +422,6 @@ def main():
                     print("[INFO]   Eyes reopened — drowsy alert cleared")
                 closed_start = None
 
-            # ═══════════════════════════════════════════════
-            #  YAWN LOGIC  (MAR-based)
-            #  Counts consecutive frames where MAR > threshold.
-            #  Fires when count reaches YAWN_FRAMES.
-            #  3-second cooldown prevents repeated triggers
-            #  from a single yawn event.
-            # ═══════════════════════════════════════════════
             if mar > MAR_THRESHOLD:
                 yawn_frame_cnt += 1
 
