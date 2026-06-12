@@ -1,0 +1,4 @@
+# Driver Drouzyness — exact versions on your laptop
+opencv-python==4.13.0.92
+mediapipe==0.10.35
+numpy==2.4.6
